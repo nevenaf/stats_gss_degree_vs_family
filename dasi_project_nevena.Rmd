@@ -1,0 +1,148 @@
+---
+title: "Effects of higher education on the age when women start their families"
+date: "April 19, 2015."
+output:
+  html_document:
+    theme: cerulean
+---
+
+<!-- For more info on RMarkdown see http://rmarkdown.rstudio.com/ -->
+
+<!-- Enter the code required to load your data in the space below. The data will be loaded but the line of code won't show up in your write up (echo=FALSE) in order to save space-->
+```{r echo=FALSE}
+load(url("http://bit.ly/dasi_gss_data"))
+```
+
+<!-- In the remainder of the document, add R code chunks as needed -->
+
+### Introduction:
+
+  
+The North American society has dramatically changed in the past century. Women got voting rights, they constitute a substantial part of the work force, and the majority of the higher education student body.  In 1989, Ursula Franklin was the first woman to become an engineering professor at the University of Toronto in Canada. However, women are still primary care givers. Previously, majority of women in their early twenties had already had several children. Now, women in their early twenties are obtaining their bachelor degrees. In this study we examine the impact of obtaining university education among women in the USA to the average age when they start their families. 
+
+
+### Data:
+For this study we will use  data from the General Social Survey ([GSS][GSS]) Cumulative File Coursera Extract. Codebook can be found at https://d396qusza40orc.cloudfront.net/statistics/project/gss1.html#educ. The data has been collected in the period of 40 years, from 1972-2012. The sampling strategy changed from modified probability sample to full probability design. From 1980, stratified sample design was used to divide the US population into strata. The sampling was done in three stages: sampling withwithin hole stratum, and then dividing the stratum into smaller blocks or enumeration districts for the subsequent stages. The sampling unit was a household.  Besides stratum variables, many control variables were used such as gender, employment status, income size, etc. to ensure equal representation within the sample. 
+
+The population to be study are women in the United States who have children. Hence, a case corresponds to a response of an adult women living in US. The explanatory variable is the degree (DEGREE), an ordinal categorical variable with five levels: less then high school, high school, junior college, bachelor, and graduate. We will refine this variable from GSS to a categorical ordinal binary variable. We label less then high school, high school, junior college values as "no university", and bachelor, and graduate as "university". The response variable is the age when the first child is born (AGEKDBRN), which is a continuous numerical variable, but it is usually rounded.
+
+This is an observational study. For this study to be an experiment, we would need to randomly assign the educational degree to be obtained by each subject (a woman) in the experiment and observe the age at which the subjects get their first child. However, we only observed the data without having any control about how it arose. As such, we cannot establish any causal links. However, we can study if there is a correlation between the variables. 
+
+Since sampling was done randomly within the whole population, the correlation between the variables of interest can be generalized to the whole population. The response to the GSS was voluntarily, hence there may be the non-response sampling bias; the women with demanding jobs may not have time to respond or those in lower socio-economic status may not be willing to reply.  Also, the sampling had been restricted to the English speaking population in US till 2006. Hence, there might be a bias against different ethnic groups in US.
+
+### Exploratory data analysis:
+
+First we clean data. In the GSS servery data, there are 31,915 women respondents. Among them, 10,684 reported their highest level of education and the age at which they got their first child. Below is the summary of the sampled data.
+
+```{r}
+mytable <- gss[, c("sex", "degree", "agekdbrn")]
+mytable <- mytable[which(mytable$sex=="Female"), ]
+dim(mytable)
+mytable <- mytable[, c("degree", "agekdbrn")]
+mytable <- na.omit(mytable)
+dim(mytable)
+
+```
+ 
+
+Next we separate between respondents who have graduated at most with and those with at least the bachelor degree. We relabel responses "Lt High School", "High School", and "Junior College" with "NO University" for degree. We label "Bachelor" and "Graduate" as "University". 
+
+```{r}
+mytable$degree = gsub("Lt High School", "NO University", mytable$degree)
+mytable$degree = gsub("High School", "NO University", mytable$degree)
+mytable$degree = gsub("Junior College", "NO University", mytable$degree)
+mytable$degree = gsub("Bachelor", "University", mytable$degree)
+mytable$degree = gsub("Graduate", "University", mytable$degree)
+mytable$degree = factor(mytable$degree)
+summary(mytable)
+table(mytable$degree)/sum(table(mytable$degree))
+boxplot(mytable$agekdbrn ~ mytable$degree)
+```
+
+We can see that the overwhelming majority (80%) of respondents has graduated with at most a junior college. The box plot indeed indicates that there is a difference in the age when women with and without university degree get their first child. The date for the respondents without a university degree is less variable and slightly right skewed. It also has many outliers. On the other hand, the date for respondents with university degree looks symmetric, has fewer outlier, but it looks more spread out.  
+
+### Inference:
+
+Our objective is to use the Central Limit Theorem (CLT) to test if women in US who have completed a university degree start their families later than women in US without a university degree. Let $\mu_1$ and $\mu_2$ denote the average age of giving birth to the first child among all adult women in US without and with, university degree, respectively. Then the null hypothesis is that $\mu_1 = \mu_2$, there is no difference in the average age when women in these groups start their families. The alternative hypothesis is that $\mu_1 < \mu_2$ which is equivalent to $\mu_1 - \mu_2 < 0$, meaning that women with no university education are on average younger than women with the university education when they start their families. The table below gives the sample sizes, point estimates for $\mu_1$ and $\mu_2$, and standard deviations in our data set.
+
+ 
+ cathegory  | sample size $n_i$ | sample mean $\hat{\mu_i}$ | sample deviation $s_i$
+------------- | ------------- | ------------- | -------------
+"No University" ($i=1$)  | 8524  | 21.76208 | 4.545486
+"University" ($i=2$)  | 2160  | 26.4713  | 4.952868
+
+First we test if conditions for application of CLT apply. The sampling for GSS is done randomly.  We can also assume that $n_1=8524$ is less than 10% of all adult women in US with no university degree. Moreover, $n_2=2160$ is less than 10% of all adult women in US with university degree. Therefore, we can assume that sampled observations are independent. Both samples are much larger than 30, hence even though we saw in the box plot that data sample for women with no university degree looks a little bit right skewed, we can proceed with the analysis using CLT.
+
+We will use the test for comparison of means of two nearly normal samples which are not paired. Indeed the respones of women with and without education are not dependent on each other. Moreover, the sample  sizes are not equal.  But they are sufficiently large. Hence we use $z$-scores. 
+
+First we compute the 95% confidence interval.
+
+```{r}
+n = array(table(mytable$degree))
+mu = array(by(mytable$agekdbrn, mytable$degree, mean))
+s = array(by(mytable$agekdbrn, mytable$degree, sd))
+mu_diff = mu[1]-mu[2]
+SE = sqrt(s[1]^2/n[1] + s[2]^2/n[2])
+c(mu_diff-(-qnorm(0.025,0,1))*SE, mu_diff+(-qnorm(0.025,0,1))*SE)
+```
+
+Based on the sampled data, we are 95% confident that the women in US who do not have a university degree are on average almost 5 years to 4.5 years younger when they give birth to their first child than women in US who have a university degree. This is very much expected since university education last on average about 4 to 5 years.
+
+Next, evaluate our hypothesis at $\alpha = 0.05$ significance level.
+
+```{r}
+z=mu_diff/SE
+p_val=pnorm(z,0,1)
+c(mu_diff, SE, z)
+p_val
+```
+We can see that $\hat{\mu}_1-\hat{\mu}_2=-4.71$ and, since our sample sizes are large, $SE$ is small and hence the $z$ score is very low ($z \approx -40$). Therefore, we got that p-value is almost 0. Our data sample provides enough evidence to reject the null hypothesis. In other words, there is 0% chance of obtaining a sample of 8524 US women with no university degree and 2160 US women with university degree such that  the women with no university degree are on average 4.7 younger or more when they give birth to their first child  than women with the university degree if in fact the average age when women in these groups start their families is the same. This was expected since 0 was not in our 95% confidence level. 
+
+
+### Conclusion:
+
+University education indeed seems to impact the average age of women in US when they start their families. Indeed, women in US who do not have university education tend to start their families earlier. On average, they are 4.5 to 5 years younger when they give birth to their first child than women who have the university education. Interestingly, this is exactly the average duration of university studies. However, we should recall that the data sample we studied included women who have not completed high school, who finished junior college as well as those who stayed in school much longer and completed graduate studies. Therefore, we cannot just assume that women out of high school either immediately start families or continue with schooling and postpone having children till exactly they have completed their university degrees.
+
+At this point, it would be interesting to further study if there is a statistical significance in the average age when women who decide to go to graduate school start their families compared to women who only have a bachelor degree. Based on our findings, it would be expected that these women start families after they have completed all schooling. However, it is also possible that the graduate school is considered similarly as a job is by those women who enter work force after they obtain their bachelor degrees. On the other hand, it would also be interesting to consider the opposite question and compare the proportion of mature women who do not have any children across different education groups. 
+
+### References: 
+[GSS]: The NORC general social survey data modified for Coursera course "Data Analysis and Statistical Inference",  http://d396qusza40orc.cloudfront.net/statistics/project/gss.Rdata.
+
+### Appendix:
+
+Sample of data values:
+
+row  | row.names | degree | agekdbrn
+------------- | ------------- | ------------- | -------------
+1  | 29389 | NO University | 21
+2  | 29391 | NO University | 25
+3 |	29395 	| NO University	 | 17
+4 |	29397 	| NO University	| 17
+5 |	29398 |	NO University |	17
+6 |	29406 |	University	| 34
+7 |	29415 |	NO University	| 32
+8 |	29416 | 	NO University |	14
+9 |	29418 |	University |	23
+10 |	29419	| NO University |	20
+11 |	29421	| NO University |	20
+12 |	29423	| University |	27
+13 |	29429 |	University |	38
+14 |	29431 |	University | 20
+15 |	29432 |	NO University |	29
+16 |	29435 |	NO University |	18
+17 |	29437 |	NO University |	19
+18 |	29438 |	NO University |	19
+19 |	29439 |	NO University |	18
+20 |	29451 |	NO University |	20
+21 |	29459 |	NO University |	19
+22 |	29460 |	NO University |	21
+23 |	29462 |	NO University |	24
+24 |	29469 |	University |	24
+25 |	29474 |	NO University	| 26
+26 |	29475 |	NO University |	28
+27 |	29478 |	NO University |	30
+28 |	29479 |	NO University |	31
+29 |	29480	| NO University |	21
+30 |	29482 |	University |	32
+
+
